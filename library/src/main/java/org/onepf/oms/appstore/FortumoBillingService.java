@@ -16,13 +16,6 @@
 
 package org.onepf.oms.appstore;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.text.TextUtils;
-import android.util.Pair;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.onepf.oms.AppstoreInAppBillingService;
@@ -40,7 +33,12 @@ import org.onepf.oms.util.Logger;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
-
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.text.TextUtils;
+import android.util.Pair;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
@@ -49,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-
 import mp.MpUtils;
 import mp.PaymentRequest;
 import mp.PaymentResponse;
@@ -237,6 +234,11 @@ public class FortumoBillingService implements AppstoreInAppBillingService {
 
     @Override
     public boolean subscriptionsSupported() {
+        return false;
+    }
+
+    @Override
+    public boolean historySupported() {
         return false;
     }
 

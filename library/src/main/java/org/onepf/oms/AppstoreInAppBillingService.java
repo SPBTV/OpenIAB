@@ -16,15 +16,13 @@
 
 package org.onepf.oms;
 
-import android.app.Activity;
-import android.content.Intent;
-
 import org.jetbrains.annotations.Nullable;
 import org.onepf.oms.appstore.googleUtils.IabException;
 import org.onepf.oms.appstore.googleUtils.IabHelper;
 import org.onepf.oms.appstore.googleUtils.Inventory;
 import org.onepf.oms.appstore.googleUtils.Purchase;
-
+import android.app.Activity;
+import android.content.Intent;
 import java.util.List;
 
 /**
@@ -57,6 +55,8 @@ public interface AppstoreInAppBillingService {
     void consume(Purchase itemInfo) throws IabException;
 
     boolean subscriptionsSupported();
+
+    boolean historySupported();
 
     void dispose();
 }

@@ -16,10 +16,6 @@
 
 package org.onepf.oms.appstore;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
-
 import com.amazon.device.iap.PurchasingListener;
 import com.amazon.device.iap.PurchasingService;
 import com.amazon.device.iap.model.FulfillmentResult;
@@ -46,7 +42,9 @@ import org.onepf.oms.appstore.googleUtils.Inventory;
 import org.onepf.oms.appstore.googleUtils.Purchase;
 import org.onepf.oms.appstore.googleUtils.SkuDetails;
 import org.onepf.oms.util.Logger;
-
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -448,6 +446,11 @@ public class AmazonAppstoreBillingService implements AppstoreInAppBillingService
     @Override
     public boolean subscriptionsSupported() {
         return true;
+    }
+
+    @Override
+    public boolean historySupported() {
+        return false;
     }
 
     @Override

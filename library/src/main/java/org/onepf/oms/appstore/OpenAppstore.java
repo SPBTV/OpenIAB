@@ -16,12 +16,17 @@
 
 package org.onepf.oms.appstore;
 
+import com.android.vending.billing.IInAppBillingService;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.onepf.oms.*;
+import org.onepf.oms.Appstore;
+import org.onepf.oms.AppstoreInAppBillingService;
+import org.onepf.oms.DefaultAppstore;
+import org.onepf.oms.IOpenAppstore;
+import org.onepf.oms.IOpenInAppBillingService;
 import org.onepf.oms.appstore.googleUtils.IabHelper;
 import org.onepf.oms.util.Logger;
-
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -29,8 +34,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
-
-import com.android.vending.billing.IInAppBillingService;
+import java.util.List;
 
 /**
  * @author Boris Minaev, Oleg Orlov
@@ -217,6 +221,36 @@ public class OpenAppstore extends DefaultAppstore {
         @Override
         public int consumePurchase(int apiVersion, String packageName, String purchaseToken) throws RemoteException {
             return openStoreBilling.consumePurchase(apiVersion, packageName, purchaseToken);
+        }
+
+        @Override
+        public int stub(int apiVersion, String packageName, String type) throws RemoteException {
+            return 0;
+        }
+
+        @Override
+        public Bundle getBuyIntentToReplaceSkus(int apiVersion, String packageName,
+                List<String> oldSkus, String newSku, String type, String developerPayload)
+                throws RemoteException {
+            return null;
+        }
+
+        @Override
+        public Bundle getBuyIntentExtraParams(int apiVersion, String packageName, String sku,
+                String type, String developerPayload, Bundle extraParams) throws RemoteException {
+            return null;
+        }
+
+        @Override
+        public Bundle getPurchaseHistory(int apiVersion, String packageName, String type,
+                String continuationToken, Bundle extraParams) throws RemoteException {
+            return null;
+        }
+
+        @Override
+        public int isBillingSupportedExtraParams(int apiVersion, String packageName, String type,
+                Bundle extraParams) throws RemoteException {
+            return 0;
         }
     }
 

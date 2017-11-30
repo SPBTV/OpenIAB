@@ -16,14 +16,6 @@
 
 package org.onepf.oms.appstore.nokiaUtils;
 
-import android.app.Activity;
-import android.app.PendingIntent;
-import android.content.*;
-import android.content.pm.ResolveInfo;
-import android.os.Bundle;
-import android.os.IBinder;
-import android.os.RemoteException;
-
 import com.nokia.payment.iap.aidl.INokiaIAPService;
 
 import org.jetbrains.annotations.NotNull;
@@ -35,10 +27,25 @@ import org.onepf.oms.AppstoreInAppBillingService;
 import org.onepf.oms.OpenIabHelper;
 import org.onepf.oms.SkuManager;
 import org.onepf.oms.appstore.NokiaStore;
-import org.onepf.oms.appstore.googleUtils.*;
+import org.onepf.oms.appstore.googleUtils.IabException;
+import org.onepf.oms.appstore.googleUtils.IabHelper;
+import org.onepf.oms.appstore.googleUtils.IabResult;
+import org.onepf.oms.appstore.googleUtils.Inventory;
+import org.onepf.oms.appstore.googleUtils.Purchase;
+import org.onepf.oms.appstore.googleUtils.SkuDetails;
 import org.onepf.oms.util.CollectionUtils;
 import org.onepf.oms.util.Logger;
-
+import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentSender;
+import android.content.ServiceConnection;
+import android.content.pm.ResolveInfo;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -422,6 +429,11 @@ public class NokiaStoreHelper implements AppstoreInAppBillingService {
     public boolean subscriptionsSupported() {
 
         // Subscriptions are not supported right now
+        return false;
+    }
+
+    @Override
+    public boolean historySupported() {
         return false;
     }
 

@@ -17,11 +17,13 @@
 package org.onepf.oms.appstore.googleUtils;
 
 import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -29,8 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * An Inventory is returned by such methods as {@link IabHelper#queryInventory}.
  */
 public class Inventory {
-    private final Map<String, SkuDetails> mSkuMap = new ConcurrentHashMap<String, SkuDetails>();
-    private final Map<String, Purchase> mPurchaseMap = new ConcurrentHashMap<String, Purchase>();
+    private final Map<String, SkuDetails> mSkuMap = new ConcurrentHashMap<>();
+    private final Map<String, Purchase> mPurchaseMap = new ConcurrentHashMap<>();
+    private final TreeSet<Purchase> mPurchaseHistory = new TreeSet<>(new Comparator<Purchase>() {
+        @Override
+        public int compare(Purchase left, Purchase right) {
+            return (int) (right.getPurchaseTime() - left.getPurchaseTime());
+        }
+    });
 
     public Inventory() {
     }
@@ -47,6 +55,10 @@ public class Inventory {
      */
     public Purchase getPurchase(String sku) {
         return mPurchaseMap.get(sku);
+    }
+
+    public Collection<Purchase> getPurchaseHistory() {
+        return mPurchaseHistory.descendingSet();
     }
 
     /**
@@ -105,6 +117,10 @@ public class Inventory {
 
     public void addSkuDetails(@NotNull SkuDetails d) {
         mSkuMap.put(d.getSku(), d);
+    }
+
+    public void addPurchaseFromHistory(@NotNull Purchase p) {
+        mPurchaseHistory.add(p);
     }
 
     public void addPurchase(@NotNull Purchase p) {

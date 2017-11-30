@@ -16,12 +16,7 @@
 
 package org.onepf.oms.appstore.googleUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
-import android.content.pm.ResolveInfo;
+import com.android.vending.billing.IInAppBillingService;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +27,6 @@ import org.onepf.oms.OpenIabHelper;
 import org.onepf.oms.SkuManager;
 import org.onepf.oms.appstore.GooglePlay;
 import org.onepf.oms.util.Logger;
-
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ComponentName;
@@ -40,13 +34,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
 import android.content.ServiceConnection;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.text.TextUtils;
-
-import com.android.vending.billing.IInAppBillingService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Provides convenience methods for in-app billing. You can create one instance of this
@@ -92,6 +89,9 @@ public class IabHelper implements AppstoreInAppBillingService {
     // Are subscriptions supported?
     boolean mSubscriptionsSupported = false;
 
+    // Is history supported?
+    boolean mHistorySupported = false;
+
     // Is an asynchronous operation in progress?
     // (only one at a time can be in progress)
     boolean mAsyncInProgress = false;
@@ -127,6 +127,7 @@ public class IabHelper implements AppstoreInAppBillingService {
     // Billing response codes
     public static final int BILLING_RESPONSE_RESULT_OK = 0;
     public static final int BILLING_RESPONSE_RESULT_USER_CANCELED = 1;
+    public static final int RESULT_SERVICE_UNAVAILABLE = 2;
     public static final int BILLING_RESPONSE_RESULT_BILLING_UNAVAILABLE = 3;
     public static final int BILLING_RESPONSE_RESULT_ITEM_UNAVAILABLE = 4;
     public static final int BILLING_RESPONSE_RESULT_DEVELOPER_ERROR = 5;
@@ -276,8 +277,10 @@ public class IabHelper implements AppstoreInAppBillingService {
                         if (listener != null) listener.onIabSetupFinished(new IabResult(response,
                                 "Error checking for billing v3 support."));
 
-                        // if in-app purchases aren't supported, neither are subscriptions.
+                        // if in-app purchases aren't supported, neither are subscriptions and
+                        // history.
                         mSubscriptionsSupported = false;
+                        mHistorySupported = false;
                         return;
                     }
                     Logger.d("In-app billing version 3 supported for ", packageName);
@@ -289,6 +292,15 @@ public class IabHelper implements AppstoreInAppBillingService {
                         mSubscriptionsSupported = true;
                     } else {
                         Logger.d("Subscriptions NOT AVAILABLE. Response: ", response);
+                    }
+
+                    // check for v6 in-app history support
+                    response = mService.isBillingSupported(6, packageName, ITEM_TYPE_INAPP);
+                    if (response == BILLING_RESPONSE_RESULT_OK) {
+                        Logger.d("In-app history AVAILABLE.");
+                        mHistorySupported = true;
+                    } else {
+                        Logger.d("In-app history is not AVAILABLE. Response: ", response);
                     }
 
                     mSetupDone = true;
@@ -351,8 +363,17 @@ public class IabHelper implements AppstoreInAppBillingService {
         return mSubscriptionsSupported;
     }
 
+    @Override
+    public boolean historySupported() {
+        return mHistorySupported;
+    }
+
     public void setSubscriptionsSupported(boolean subscriptionsSupported) {
         mSubscriptionsSupported = subscriptionsSupported;
+    }
+
+    public void setHistorySupported(boolean historySupported) {
+        mHistorySupported = historySupported;
     }
 
     public void setSetupDone(boolean setupDone) {
@@ -626,6 +647,11 @@ public class IabHelper implements AppstoreInAppBillingService {
                         throw new IabException(r, "Error refreshing inventory (querying prices of subscriptions).");
                     }
                 }
+            }
+
+            // if history is supported, then also query for history
+            if (mHistorySupported) {
+                r = queryHistory(inv, ITEM_TYPE_INAPP);
             }
 
             return inv;
@@ -906,6 +932,78 @@ public class IabHelper implements AppstoreInAppBillingService {
         Logger.d("Ending async operation: ", mAsyncOperation);
         mAsyncOperation = "";
         mAsyncInProgress = false;
+    }
+
+    int queryHistory(@NotNull Inventory inv, String itemType) throws JSONException, RemoteException {
+        // Query purchases
+        Logger.d("Querying history items, item type: ", itemType);
+        Logger.d("Package name: ", getPackageName());
+        boolean verificationFailed = false;
+        String continueToken = null;
+
+        do {
+            Logger.d("Calling getPurchases with continuation token: ", continueToken);
+            if (mService == null) {
+                Logger.d("queryHistory() failed: service is not connected.");
+                return BILLING_RESPONSE_RESULT_ERROR;
+            }
+            int response = mService.isBillingSupported(6, getPackageName(), itemType);
+            if (response != BILLING_RESPONSE_RESULT_OK) {
+                Logger.d("queryHistory() failed: api is not supported");
+                return BILLING_RESPONSE_RESULT_ERROR;
+            }
+
+            Bundle historyItems = mService.getPurchaseHistory(6, getPackageName(), itemType,
+                    continueToken, null);
+            response = getResponseCodeFromBundle(historyItems);
+            Logger.d("Owned items response: ", response);
+            if (response != BILLING_RESPONSE_RESULT_OK) {
+                Logger.d("queryHistory() failed: ", getResponseDesc(response));
+                return response;
+            }
+
+            if (!historyItems.containsKey(RESPONSE_INAPP_ITEM_LIST)
+                    || !historyItems.containsKey(RESPONSE_INAPP_PURCHASE_DATA_LIST)
+                    || !historyItems.containsKey(RESPONSE_INAPP_SIGNATURE_LIST)) {
+                Logger.e("In-app billing error: Bundle returned from queryHistory() doesn't contain required fields.");
+                return IABHELPER_BAD_RESPONSE;
+            }
+
+            ArrayList<String> skus = historyItems.getStringArrayList(RESPONSE_INAPP_ITEM_LIST);
+            ArrayList<String> purchaseDataList = historyItems.getStringArrayList(RESPONSE_INAPP_PURCHASE_DATA_LIST);
+            ArrayList<String> signatureList = historyItems.getStringArrayList(RESPONSE_INAPP_SIGNATURE_LIST);
+
+            for (int i = 0; i < purchaseDataList.size(); ++i) {
+                String purchaseData = purchaseDataList.get(i);
+                String signature = signatureList.get(i);
+                String sku = skus.get(i);
+
+                if (isValidDataSignature(mSignatureBase64, purchaseData, signature)) {
+                    Logger.d("Sku is owned: ", sku);
+                    Purchase purchase = new Purchase(itemType, purchaseData, signature, appstore.getAppstoreName());
+                    String storeSku = purchase.getSku();
+                    purchase.setSku(SkuManager.getInstance().getSku(appstore.getAppstoreName(), storeSku));
+
+                    if (TextUtils.isEmpty(purchase.getToken())) {
+                        Logger.w("In-app billing warning: BUG: empty/null token!");
+                        Logger.d("Purchase data: ", purchaseData);
+                    }
+
+                    // Record ownership and token
+                    inv.addPurchaseFromHistory(purchase);
+                } else {
+                    Logger.w("In-app billing warning: Purchase signature verification **FAILED**. Not adding item.");
+                    Logger.d("   Purchase data: ", purchaseData);
+                    Logger.d("   Signature: ", signature);
+                    verificationFailed = true;
+                }
+            }
+
+            continueToken = historyItems.getString(INAPP_CONTINUATION_TOKEN);
+            Logger.d("Continuation token: ", continueToken);
+        } while (!TextUtils.isEmpty(continueToken));
+
+        return verificationFailed ? IABHELPER_VERIFICATION_FAILED : BILLING_RESPONSE_RESULT_OK;
     }
 
 
